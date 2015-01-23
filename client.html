@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<script src="/socket.io/socket.io.js"></script>
+		<script type="text/javascript">
+//			var socketio = io.connect("intense-beach-4346.herokuapp.com");
+			var socketio = io.connect(window.location.host);
+			var nickname = "guest";
+			var restriction = 0;
+
+			String.prototype.replaceAll = function (find, replace) {
+			    var str = this;
+			    return str.replace(new RegExp(find.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'), 'g'), replace);
+			};
+
+			var restriction_list = new Array(
+				"No Restriction",
+				"Messages lack the letter 'a'",
+				"Messages lack the letter 'e'",
+				"Messages lack the letter 'i'",
+				"Messages lack the letter 'o'",
+				"Messages lack the letter 'r'",
+				"Messages lack the letter 's'",
+				"Messages lack the letter 't'",
+				"Messages lack the letter 'l'",
+				"Messages lack the letter 'n'",
+				"Doesn't see spaces",
+				"Double vowels at end of words",
+				"Pig latin",
+				"No vowels"
+			);
+			var restriction_count = restriction_list.length;
+
+
+			socketio.on("message_to_client", function(data) {
+				if ((data['query'] != "") && !(data['query'] === nickname))
+					return;
+
+				if ((data['query'] != "") && (data['query'] === nickname)) {
+					var r = confirm(data['nickname'] + " thinks your restriction is: " + data['message']);
+
+					if (r == true) {
+						socketio.emit("message_to_server", { 
+							nick: nickname, 
+							message : data['nick'] + " has guessed my restriction!",
+							alterable: "no"});
+					}
+
+					return;
+				}
+
+				var inc_msg = alterMessage( data['message'], restriction );
+				if (data['alterable'] == 'no')
+					inc_msg = data['message'];
+
+				appendMessageToLog("&lt;<a href='javascript:guess(&quot;" + data['nick'] + "&quot;)'>" + data['nick'] + "</a>&gt;"
+				+ inc_msg );
+			});
+
+			function guess(name) {
+				var r = prompt("What do you think " + name + "'s restriction is?")
+				if (r != null) {
+					socketio.emit("message_to_server", { 
+						nick: nickname, 
+						message : r,
+						alterable: "no",
+						query: name});
+				}
+			}
+
+			function appendMessageToLog(msg) {
+				document.getElementById("chatlog").innerHTML = ( "<br/>" + 
+				msg + document.getElementById("chatlog").innerHTML);
+			}
+
+			function alterMessage(msg, type) {
+				if (type == 0) {
+					return msg;
+				}
+				if (type == 1) {
+					return msg.replaceAll("a", "");
+				}
+				if (type == 2) {
+					return msg.replaceAll("e", "");
+				}
+				if (type == 3) {
+					return msg.replaceAll("i", "");
+				}
+				if (type == 4) {
+					return msg.replaceAll("o", "");
+				}
+				if (type == 5) {
+					return msg.replaceAll("r", "");
+				}
+				if (type == 6) {
+					return msg.replaceAll("s", "");
+				}
+				if (type == 7) {
+					return msg.replaceAll("t", "");
+				}
+				if (type == 8) {
+					return msg.replaceAll("l", "");
+				}
+				if (type == 9) {
+					return msg.replaceAll("n", "");
+				}
+				if (type == 10) {
+					return msg.replaceAll(" ", "");
+				}
+				if (type == 11) {
+					return msg.replaceAll("a ", "aa ")
+						.replaceAll("e ", "ee ")
+						.replaceAll("i ", "ii ")
+						.replaceAll("o ", "oo ")
+						.replaceAll("u ", "uu ");
+				}
+				if (type == 12) {
+					return (msg + " ").replaceAll("a ", "away ")
+						.replaceAll("e ", "eway ")
+						.replaceAll("i ", "iway ")
+						.replaceAll("o ", "oway ")
+						.replaceAll("u ", "uway ")
+						.replaceAll("b ", "bay ")
+						.replaceAll("c ", "cay ")
+						.replaceAll("d ", "day ")
+						.replaceAll("f ", "fay ")
+						.replaceAll("g ", "gay ")
+						.replaceAll("h ", "hay ")
+						.replaceAll("j ", "jay ")
+						.replaceAll("k ", "kay ")
+						.replaceAll("l ", "lay ")
+						.replaceAll("m ", "may ")
+						.replaceAll("n ", "nay ")
+						.replaceAll("p ", "pay ")
+						.replaceAll("q ", "quay ")
+						.replaceAll("r ", "ray ")
+						.replaceAll("s ", "say ")
+						.replaceAll("t ", "tay ")
+						.replaceAll("v ", "vay ")
+						.replaceAll("w ", "way ")
+						.replaceAll("x ", "xay ")
+						.replaceAll("y ", "yay ")
+						.replaceAll("z ", "zay ");
+				}
+				if (type == 13) {
+					return msg.replaceAll("a", "")
+						.replaceAll("e", "")
+						.replaceAll("i", "")
+						.replaceAll("o", "")
+						.replaceAll("u", "");
+				}
+
+			}
+
+			function generateRestriction() {
+				restriction = Math.floor((Math.random() * restriction_count) );
+//				alert("Your restriction is:\n" + restriction_list[restriction]);
+				document.getElementById("html_restriction").innerHTML 
+					= restriction_list[restriction];
+			}
+
+			function sendMessage() {
+				var msg = document.getElementById("message_input").value;
+
+				if (nickname == "guest") {
+					nickname = msg;
+					msg = nickname + " has entered the room.";
+					document.getElementById("html_name").innerHTML = nickname;
+					generateRestriction();
+					socketio.emit("message_to_server", { 
+						nick: nickname, 
+						message : msg,
+						alterable: "no"});
+
+				}
+
+				else {	
+//					msg = alterMessage(msg, restriction);
+
+					socketio.emit("message_to_server", { 
+						nick: nickname, 
+						message : msg,
+						alterable: "yes"});
+				}
+
+				document.getElementById("message_input").value = "";
+				document.getElementById("send_button").innerHTML = "send"
+			}
+
+		</script>
+	</head>
+	<body>
+		Name: <span id="html_name">(none)</span>    Restriction: 
+		<span id="html_restriction">(none set)</span><br/>
+		<input type="text" size="75" maxlength="100" id="message_input"/>
+		<button id="send_button" onclick="sendMessage()">set nick</button>
+		<div id="chatlog"></div>
+
+		<script type="text/javascript">
+			document.getElementById('message_input').onkeypress=function(e){
+			    if(e.keyCode==13){
+				document.getElementById('send_button').click();
+			    }
+			}			
+
+
+		</script>
+	</body>
+</html>
